@@ -5,11 +5,11 @@ kept separate from the book itself: the book states *what* it claims, this file
 records *what was checked, how, and what could not be resolved*.
 
 - **Baseline:** `Nihongo_Master_N5-N1.pdf`, 402 pages, 346 bookmarks, 23,391,372 bytes, PDF 1.7.
-- **Second Edition:** 368 pages, 361 bookmarks, ~2.1 MB, A4, single file.
+- **Second Edition:** 386 pages, 361 bookmarks, ~2.1 MB, A4, single file.
 - **Source of truth for content:** the baseline PDF itself. No other copy of the
   manuscript exists; everything in the new book is either baseline content that
   survived the audit, or new writing.
-- **Rebuild:** `cd /home/user/build && python3 group.py && python3 -c "import render; render.build('/home/user/build/book.pdf')"`
+- **Rebuild:** `cd tools && python3 extract.py && python3 group.py && python3 -c "import render; render.build('../Nihongo_Master_N5-N1_2nd_Edition.pdf')"` — repo-local, no external working directory.
 
 ---
 
@@ -80,6 +80,35 @@ and revisited in step 10.)
 
 ---
 
+## 3b. Structural defects found while proof-reading the re-typeset pages
+
+The re-typesetting itself introduced a class of defect that text-level review
+cannot see: three printed devices were destroyed by the line-sorting step, so
+their content survived but stopped being readable as a device. Found by
+comparing rendered pages against the First Edition and then measuring the source
+geometry (marker x, body x, baseline offset).
+
+| Device | Number affected | Evidence in the source PDF | Repair |
+|---|---|---|---|
+| Numbered list with hanging indent | 6 lists (p.49 `Ba hệ quả quan trọng`, p.99, p.101 five-step method, …) | marker at x≈68.8, item text at x≈79.1, marker baseline 0.2–0.4 pt *below* its own first line | markers recognised (`1.` `2)`), each paired to the indented line it labels; numbering kept |
+| Run-in label | 604 labels | 7.4–7.6 pt bold line alone on its baseline (e.g. `Ý nghĩa cốt lõi / 中心的な意味`), body at 9.2 pt below | emitted as `label`, set as a small vermilion line — the First Edition's own device |
+| Boxed callout swallowed by the preceding paragraph | 36 labels (of 275) | label carries `／`, 9.1 pt body follows | paragraph loop now stops at a label; box restored |
+| Table row that is only a list marker | 3 rows (p.49 BẢNG 3.1, p.346 BẢNG R25.2) | body-size marker inside the table region | extension of the table region stops at body-size markers |
+
+Verification after the repair, against the previous Second-Edition build:
+
+- whole-book character multiset **identical** (zero characters lost or gained
+  except the six restored list bullets);
+- 287 tables, 84 `h2`, 361 bookmarks — unchanged;
+- the two borderline tables checked by hand: `BẢNG 3.1` (now ends before the
+  list) and `BẢNG R25.2` (wrapped date cells `4)` / `7)` kept inside the table).
+
+Because 604 labels now occupy their own lines, the book grew from 368 to 386
+pages. This is a deliberate legibility cost, not padding: each label line
+belongs to an explanation that was previously buried mid-paragraph.
+
+---
+
 ## 4. Structural repairs
 
 ### 4.1 Reference numbering (R21–R34)
@@ -105,6 +134,17 @@ with the level markers N5/N4/N3/N2/N1/REF kept as their own lines.
 Completeness check: every page reference present in the baseline index is
 present in the new index. The only references not carried over are the baseline
 index's *own* folios (317–323), which are not references to content.
+
+**Page-number translation.** The baseline index cites *First-Edition* pages, so
+in a re-typeset book every number is stale. Measured on a 150-reference sample:
+20 % resolved on the cited page in the first pass of this edition, against 82 %
+in the First Edition — i.e. the defect was real and large. `tools/idxmap.py`
+rebuilds the correspondence (baseline bookmarks matched against this edition's
+bookmarks, ~370 validated anchor points, linear interpolation between them) and
+`indexfix.py` translates every index number through it. After the remap the same
+sample resolves **113/150** and a sample re-read out of the *printed* index
+resolves 112/133. The map is committed as `tools/idxmap.json`; it must be
+regenerated whenever the layout changes (two-pass build, see `tools/README.md`).
 
 ### 4.3 Layout
 
@@ -132,8 +172,8 @@ All verified by fetching the issuing body's own publication; access date
 | 「日本語教育の参照枠」報告, 文化審議会国語分科会, 令和3年10月12日; six CEFR levels A1–C2, 493 Can-do, five 言語活動 | 文化庁 | Can-do maps, R68 |
 | JF 日本語教育スタンダード; levels driven by 課題遂行能力 (Can-do) | 国際交流基金 | Can-do maps |
 | 「公用文作成の考え方」建議 2022-01-07; 内閣官房長官通知 2022-01-11; classification of 公用文; 、 for horizontal writing | 文化庁 | R60 |
-| 「ローマ字のつづり方」令和7年内閣告示第4号, promulgated 2025-12-22; Hepburn-based; 撥音 n, 促音 doubled, 長音 macron or doubled vowel; established spellings unchanged; IME input unaffected | 文化庁 | R20, R46, R61 |
-| JLPT CEFR reference display from December 2025; thresholds N5 80+, N4 90+, N3 95–103 / 104+, N2 90–111 / 112+, N1 100–141 / 142+; level structure unchanged | 日本語能力試験 公式 | R11, R61, Can-do maps |
+| 「ローマ字のつづり方」内閣告示第四号, 令和七年十二月二十二日, 内閣総理大臣 高市早苗; 昭和二十九年内閣告示第一号 abolished; Hepburn-based (`shi` `chi` `tsu` `fu` `ju`); 撥音 `n`, 促音 doubled, 長音 macron or doubled vowel; established spellings unchanged; IME input unaffected | 文化庁 国語施策情報, 内閣告示・内閣訓令 page (fetched 2026-09-17) | R20, R46, R61 |
+| JLPT CEFR reference display from December 2025; thresholds N5 80+ A1, N4 90+ A2, N3 95–103 A2 / 104+ B1, N2 90–111 B1 / 112+ B2, N1 100–141 B2 / 142+ C1; shown only to those who pass, and only for 言語能力・受容活動能力 (no speaking/writing/interaction); level structure unchanged | 日本語能力試験 公式 `Indication of the CEFR Level for Reference` (fetched 2026-09-17) | R11, R61, Can-do maps |
 
 **Not independently verified in this pass:** the readings of individual
 pitch-accent entries in R19/R31 (these are dictionary-dependent and are already

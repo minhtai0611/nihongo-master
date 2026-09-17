@@ -112,6 +112,10 @@ def build_styles():
                   textColor=INK, spaceBefore=9, spaceAfter=3),
     callabel  = S('callabel', fontName='SansB', fontSize=7.7, leading=11.4,
                   textColor=SUMI),
+    # run-in label inside a grammar entry (“Ý nghĩa cốt lõi / 中心的な意味”):
+    # a small bold line above its explanation, as printed in the 1st edition
+    runin     = S('runin', fontName='SansB', fontSize=8.2, leading=11.8,
+                  textColor=VERMILION, spaceBefore=7.5, spaceAfter=1.6),
     callbody  = S('callbody', fontName='Body', fontSize=9.4, leading=14.4,
                   textColor=INK, spaceAfter=3.2),
     exja      = S('exja', fontName='Disp', fontSize=11.4, leading=17.2,

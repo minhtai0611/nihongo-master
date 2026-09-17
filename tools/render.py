@@ -9,9 +9,13 @@ import blocks as B
 T.register_fonts(); T.build_styles()
 import frontmatter as FM
 
-DOC = json.load(open('/home/user/build/doc.json'))
+import os as _os
+BASE = _os.environ.get('NIHONGO_BUILD') or _os.path.dirname(_os.path.abspath(__file__))
+def _p(name): return _os.path.join(BASE, name)
+
+DOC = json.load(open(_p('doc.json')))
 import renumber, indexfix
-COR = json.load(open('/home/user/build/corrections.json')) if os.path.exists('/home/user/build/corrections.json') else {}
+COR = json.load(open(_p('corrections.json'))) if os.path.exists(_p('corrections.json')) else {}
 
 GLYPH_FIX = [('\u9488','\u91dd'), ('\u2717','\u00d7'), ('\u27e8','\u3008'), ('\u27e9','\u3009')]
 def norm(t):
@@ -436,7 +440,15 @@ def render_block(b, head=False):
         if not txt: return out
         out.append(Paragraph(guard(txt),T.ST['body']))
     elif t=='bullets':
-        out.append(B.Bullets([clean(i) for i in b['items']])); out.append(Spacer(1,5))
+        its=[]
+        for i in b['items']:
+            if isinstance(i, dict): its.append(dict(m=clean(i.get('m') or ''), t=clean(i.get('t') or '')))
+            else: its.append(clean(i))
+        its=[i for i in its if (i.get('t') if isinstance(i,dict) else i)]
+        if its: out.append(B.Bullets(its)); out.append(Spacer(1,5))
+    elif t=='label':
+        txt=clean(b['text'])
+        if txt: out.append(Paragraph(guard(txt,'SansB'),T.ST['runin']))
     elif t=='callout':
         lab=clean(b['label']); body=clean(b['body'])
         if not lab and not body: return out
@@ -500,5 +512,5 @@ def build(path, headings=None):
     return [seen[k] for k in order]
 
 if __name__=='__main__':
-    hs=build('/home/user/build/book.pdf')
+    hs=build(_p('book.pdf'))
     print("headings:",len(hs))

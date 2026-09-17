@@ -7,6 +7,10 @@ Each entry rewrites an over-absolute, inaccurate or misleading passage.
 """
 import json
 
+import os as _os
+BASE = _os.environ.get('NIHONGO_BUILD') or _os.path.dirname(_os.path.abspath(__file__))
+def _p(name): return _os.path.join(BASE, name)
+
 R = []   # (old, new)
 
 def fix(old, new):
@@ -166,6 +170,6 @@ fix(
 )
 
 OUT = dict(replace=R, nuke=[])
-with open('/home/user/build/corrections.json','w',encoding='utf-8') as f:
+with open(_p('corrections.json'),'w',encoding='utf-8') as f:
     json.dump(OUT, f, ensure_ascii=False, indent=1)
 print("corrections:", len(R))

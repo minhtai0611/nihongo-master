@@ -195,14 +195,22 @@ class DataTable(Flowable):
         self._t.drawOn(c, 0, y)
 
 class Bullets(Flowable):
+    """Bulleted or numbered list.  Each item is either a plain string (bullet)
+    or a dict ``{'m': marker, 't': text}`` when the source carried its own
+    marker, so numbered lists keep the numbering printed in the book."""
     def __init__(self, items, width=None):
         Flowable.__init__(self); self.items=items; self.width=width
     def wrap(self, aw, ah):
         self._w=aw
         self._ps=[]
         for it in self.items:
-            p=Paragraph('<bullet>&#8226;</bullet>'+guard(it), S('bullet'))
-            self._ps.append((p, p.wrap(self._w,1000)[1]))
+            if isinstance(it, dict):
+                mk=it.get('m') or '&#8226;'; tx=it.get('t','')
+            else:
+                mk='&#8226;'; tx=it
+            if tx.strip():
+                p=Paragraph('<bullet>%s</bullet>%s'%(mk,guard(tx)), S('bullet'))
+                self._ps.append((p, p.wrap(self._w,1000)[1]))
         self._th=sum(h for _,h in self._ps)
         return (self._w, self._th+4)
     def draw(self):

@@ -1,5 +1,9 @@
 import json, sys, re
-d=json.load(open('/home/user/build/doc.json'))
+
+import os as _os
+BASE = _os.environ.get('NIHONGO_BUILD') or _os.path.dirname(_os.path.abspath(__file__))
+def _p(name): return _os.path.join(BASE, name)
+d=json.load(open(_p('doc.json')))
 pat=sys.argv[1]
 ctx=int(sys.argv[2]) if len(sys.argv)>2 else 260
 rx=re.compile(pat, re.I)

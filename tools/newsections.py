@@ -1237,7 +1237,13 @@ def candos():
               'vào từng bậc là xếp đặt của người biên soạn</b>, không phải bảng '
               'chính thức. Mức CEFR ghi kèm là mức tham chiếu tương ứng với JLPT '
               'theo công bố của 国際交流基金 (12/2025), không phải quy đổi riêng '
-              'của cuốn sách này. ' + SOURCES_CHECKED, tone='gold')
+              'của cuốn sách này. Ba điều kiện đi kèm cần nhớ: mức đó <b>chỉ hiển '
+              'thị cho người đã đỗ</b>; nó tương ứng với 言語能力・受容活動能力 — '
+              'kiến thức ngôn ngữ và kỹ năng <b>tiếp nhận</b> (đọc, nghe), '
+              '<b>không</b> bao gồm nói, viết hay tương tác; và nó phụ thuộc vào '
+              '<b>tổng điểm</b> chứ không chỉ vào bậc — N2 đạt 90–111 là B1, từ '
+              '112 là B2; N1 đạt 100–141 là B2, từ 142 là C1 '
+              '(日本語能力試験 公式, 参考表示). ' + SOURCES_CHECKED, tone='gold')
     for lvl, (cefr, ja, rows) in _CD.items():
         F.append(H3(f'{lvl} ／ {ja} ／ CEFR tham chiếu: {cefr}'))
         data = [[Paragraph(guard(a, 'SansB'), T.ST['th']),

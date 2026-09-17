@@ -115,6 +115,37 @@ def columns(sub, anch):
     return cols
 
 
+def load_map():
+    """First-Edition -> Second-Edition page correspondence (see idxmap.py).
+
+    The index printed in the First Edition cites First-Edition pages, which no
+    longer hold in a re-typeset book, so every number is translated through this
+    map.  If the map is missing the numbers are printed unchanged (the index is
+    then consistent with the First Edition, not with this one)."""
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idxmap.json')
+    try:
+        with open(p, encoding='utf-8') as f:
+            return {k: int(v) for k, v in json.load(f)['map'].items()}
+    except FileNotFoundError:
+        print('   idxmap.json not found: index page numbers left as printed')
+        return {}
+
+
+NUMPAT = re.compile(r'(?<![\d.])(\d{1,3})(?![\d.])')
+
+
+def remap_numbers(cell, m):
+    """Translate the page references inside one index cell."""
+    if not m:
+        return cell
+    def rep(mo):
+        n = int(mo.group(1))
+        if 20 <= n <= 402 and str(n) in m:
+            return str(m[str(n)])
+        return mo.group(1)
+    return NUMPAT.sub(rep, cell)
+
+
 def cell_lines(lines):
     """One string per visual row, with short numeric rows folded into the
     line above (the First Edition prints each page number beside its entry)."""
@@ -132,6 +163,9 @@ def cell_lines(lines):
     return out
 
 
+PAGE_MAP = load_map()
+
+
 def page_items(page):
     """-> list of grids; each grid is a list of columns of strings."""
     lines = index_lines(page)
@@ -142,7 +176,8 @@ def page_items(page):
             continue                      # the 'how to use' note above the index
         anch = anchors(sub)
         if not anch: continue
-        cols = [cell_lines(c) for c in columns(sub, anch)]
+        cols = [[remap_numbers(x, PAGE_MAP) for x in cell_lines(c)]
+                for c in columns(sub, anch)]
         if any(cols): grids.append(cols)
     return grids
 

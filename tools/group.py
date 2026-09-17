@@ -8,11 +8,63 @@ Two structural passes:
 import json, re
 from collections import Counter
 
-IR = json.load(open('/home/user/build/ir.json'))
+import os as _os
+BASE = _os.environ.get('NIHONGO_BUILD') or _os.path.dirname(_os.path.abspath(__file__))
+def _p(name): return _os.path.join(BASE, name)
+
+IR = json.load(open(_p('ir.json')))
 JA_RE = re.compile(r'^[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\uff00-\uffef\u2460-\u24ff]+$')
 CAP_RE = re.compile(r'^(BẢNG|Bảng)\b', re.I)
 BUL = re.compile(r'^[•\u00b7]$')
+NUMBUL = re.compile(r'^\d{1,2}[.)]$')
 NUMSEC = re.compile(r'^(\d+(\.\d+)+|R\d+(\.\d+)*)\s')
+
+def is_marker(t):
+    """A line that is nothing but a list marker: • · 1. 2) …"""
+    return bool(BUL.match(t) or NUMBUL.match(t))
+
+def is_bullet(t):
+    """Narrow test used by the table builder: the source uses the same bullet
+    glyph as a table filler, so numbered markers must NOT be stripped from
+    table cells."""
+    return bool(BUL.match(t))
+
+def is_clabel(L):
+    """Bold 7.4/7.6 pt label at an indented x — a callout or run-in heading."""
+    return ('Bold' in L['font'] and round(L['maxsize'],1) in (7.4,7.6)
+            and L['x'] > 45)
+
+def upper_ratio(t):
+    ls=[c for c in t if c.isalpha()]
+    return sum(1 for c in ls if c.isupper())/len(ls) if ls else 0.0
+
+def solo_label(lines, i):
+    """is_clabel + nothing else on the same baseline: excludes the small bold
+    *table header* cells, which share their line with other cells."""
+    if not is_clabel(lines[i]): return False
+    L = lines[i]
+    return not any(j != i and abs(M['y']-L['y']) < 2.5
+                   for j, M in enumerate(lines))
+
+def order_markers(lines):
+    """Put a lone list marker immediately before the line it labels.
+
+    In the source PDF a marker's baseline sits up to ~0.5 pt below the first
+    line of its item, so a plain y-then-x sort emits the marker *after* its own
+    text; the marker then either starts a spurious item or is swallowed by the
+    preceding paragraph (this is what flattened numbered lists in the 1st ed.).
+    Only lines that are currently mis-ordered are moved, so table order and
+    markers that are already correct are untouched."""
+    out = list(lines)
+    for L in lines:
+        if not is_marker(L['text']): continue
+        cands = [M for M in lines if M is not L and M['x'] > L['x'] + 1.5
+                 and -2.0 <= (M['y'] - L['y']) <= 2.0]
+        if not cands: continue
+        tgt = min(cands, key=lambda M: abs(M['y'] - L['y']))
+        if out.index(L) > out.index(tgt):
+            out.remove(L); out.insert(out.index(tgt), L)
+    return out
 
 # ---------------------------------------------------------------- bookmarks
 def norm_txt(s):
@@ -81,7 +133,7 @@ STRUCT = {'partnum','part-ja','part-vi','partdesc','chap-label','chap-ja','chap-
 
 def anchors_of(lines, gap=22.0):
     xs = sorted({round(l['x'],1) for l in lines
-                 if not BUL.match(l['text']) and l.get('role') not in STRUCT})
+                 if not is_bullet(l['text']) and l.get('role') not in STRUCT})
     anchors=[]
     for x in xs:
         if not anchors or x-anchors[-1] > gap: anchors.append(x)
@@ -95,14 +147,14 @@ def _bands(lines, tol=5.0):
     return bs
 
 def _is_tabular(band):
-    cells=[l for l in band['lines'] if not BUL.match(l['text']) and l['role'] not in STRUCT]
+    cells=[l for l in band['lines'] if not is_bullet(l['text']) and l['role'] not in STRUCT]
     if len(cells)<2: return False
     xs=sorted(l['x'] for l in cells)
     return any(xs[k+1]-xs[k] > 25.0 for k in range(len(xs)-1))
 
 def _anchors(lines, gap=22.0):
     xs=sorted({round(l['x'],1) for l in lines
-               if not BUL.match(l['text']) and l['role'] not in STRUCT})
+               if not is_bullet(l['text']) and l['role'] not in STRUCT})
     out=[]
     for x in xs:
         if not out or x-out[-1] > gap: out.append(x)
@@ -125,12 +177,16 @@ def table_regions(lines):
             seed_lines=[l for b in bands[i:j+1] for l in b['lines']]
             an=_anchors(seed_lines)
             if len(an) >= 2:
+                # size the table's own cells are set in
+                dom=Counter(round(l['size'],1) for l in seed_lines
+                            if l['role'] not in STRUCT).most_common(1)[0][0]
                 start=idx[id(bands[i]['lines'][0])]
                 end=idx[id(bands[j]['lines'][-1])]
                 # extend upward
                 while start-1 >= 0:
                     l=lines[start-1]
-                    if l['role'] in STRUCT or BUL.match(l['text']): break
+                    if l['role'] in STRUCT: break
+                    if is_marker(l['text']) and abs(round(l['size'],1)-dom) > 0.5: break
                     ci=_col(l['x'],an)
                     if not _fits(l,an,ci): break
                     if lines[start]['y']-l['y'] > 30.0: break
@@ -138,7 +194,13 @@ def table_regions(lines):
                 # extend downward
                 while end+1 < len(lines):
                     l=lines[end+1]
-                    if l['role'] in STRUCT or BUL.match(l['text']): break
+                    if l['role'] in STRUCT: break
+                    # a list marker set in body size is not a cell; nor is a
+                    # body-size line that introduces such a list
+                    if is_marker(l['text']) and abs(round(l['size'],1)-dom) > 0.5: break
+                    if (abs(round(l['size'],1)-dom) > 0.5 and end+2 < len(lines)
+                        and is_marker(lines[end+2]['text'])):
+                        break
                     ci=_col(l['x'],an)
                     if not _fits(l,an,ci): break
                     if l['y']-lines[end]['y'] > 30.0: break
@@ -171,13 +233,15 @@ def _col(x, anchors, tol=6.0):
 def build_table(region_lines, anchors):
     """Rows broken at bands containing a first-column cell; within a band, left to right."""
     bands = _bands(region_lines, tol=5.0)
+
     grid=[]; cur=None
     for bd in bands:
-        cells=[l for l in bd['lines'] if l['role'] not in STRUCT and not BUL.match(l['text'])]
+        cells=[l for l in bd['lines'] if l['role'] not in STRUCT and not is_bullet(l['text'])]
         if not cells: continue
         cells.sort(key=lambda l: l['x'])
         cis=[(_col(l['x'],anchors), l) for l in cells]
         cis=[(k,l) for k,l in cis if _fits(l,anchors,k)]
+
         if not cis: continue
         has0 = any(k==0 for k,_ in cis)
         if has0 or cur is None:
@@ -198,6 +262,7 @@ def build_table(region_lines, anchors):
 
 # -------------------------------------------------------------- group page
 def group_page(lines, page_no):
+    lines = order_markers(lines)
     for L in lines: L['role'] = role(L)
     regions, anchors = table_regions(lines)
     in_table = {}
@@ -236,19 +301,21 @@ def group_page(lines, page_no):
             ls = []
             while i < n and lines[i]['role'] == 'dek': ls.append(lines[i]); i += 1
             blocks.append(dict(t='dek', text=merge(ls))); continue
-        if BUL.match(L['text']):
+        if is_marker(L['text']) and i not in in_table:
             items = []
-            while i < n and BUL.match(lines[i]['text']):
-                txt = ''; i += 1
-                while i < n and i not in in_table and lines[i]['role'] in ('para','callbody') and not BUL.match(lines[i]['text']):
-                    if txt == '': txt = lines[i]['text']
-                    elif lines[i]['x'] > 74: txt += ' ' + lines[i]['text']
-                    else: txt += ' ' + lines[i]['text']
+            while i < n and is_marker(lines[i]['text']) and i not in in_table:
+                mrk = lines[i]['text']; mx = lines[i]['x']; txt = ''; i += 1
+                # an item's text is indented past its marker (measured: +6 to
+                # +11 pt); a line back at the marker's own x starts a new
+                # paragraph, so the list ends there.
+                while (i < n and i not in in_table
+                       and lines[i]['role'] in ('para','callbody','other','cell','ex-vi','ex-note')
+                       and not is_marker(lines[i]['text'])
+                       and not is_clabel(lines[i])
+                       and lines[i]['x'] >= mx + 4.0):
+                    txt = (txt + ' ' + lines[i]['text']) if txt else lines[i]['text']
                     i += 1
-                items.append(txt)
-                while i < n and lines[i]['role'] in ('para','ex-vi') and lines[i]['x'] >= 74 \
-                      and not BUL.match(lines[i]['text']):
-                    items[-1] += ' ' + lines[i]['text']; i += 1
+                if txt: items.append(dict(m=mrk, t=txt))
             if items: blocks.append(dict(t='bullets', items=items))
             continue
         if R == 'ex-ja':
@@ -270,15 +337,24 @@ def group_page(lines, page_no):
             else:
                 blocks.append(dict(t='h4', text=merge([lines[i]]))); i += 1
             continue
-        if L['font'].startswith('NotoSans') and 'Bold' in L['font'] and L['maxsize'] in (7.4, 7.6) and L['x'] > 45:
-            lbl = L['text']; i += 1; body = []
-            while i < n and lines[i]['role'] == 'callbody': body.append(lines[i]); i += 1
-            blocks.append(dict(t='callout', label=lbl, body=merge(body))); continue
+        if solo_label(lines, i):
+            nxt = lines[i+1] if i+1 < n else None
+            # A boxed callout in this book is an uppercase label carrying the
+            # full-width slash, set above 9.1 pt body text; anything else is a
+            # run-in heading above its own explanation (1st-edition device).
+            boxed = (nxt is not None and nxt['role'] == 'callbody'
+                     and ('\uff0f' in L['text'] or upper_ratio(L['text']) > 0.6))
+            if boxed:
+                lbl = L['text']; i += 1; body = []
+                while i < n and lines[i]['role'] == 'callbody' and not is_marker(lines[i]['text']):
+                    body.append(lines[i]); i += 1
+                blocks.append(dict(t='callout', label=lbl, body=merge(body))); continue
+            blocks.append(dict(t='label', text=L['text'])); i += 1; continue
         if R in ('para','callbody','other','chap-body','ex-vi','ex-note','cell'):
             ls = []
             while i < n and i not in in_table \
                   and lines[i]['role'] in ('para','callbody','other','chap-body','ex-vi','ex-note','cell') \
-                  and not BUL.match(lines[i]['text']):
+                  and not is_marker(lines[i]['text']) and not solo_label(lines, i):
                 ls.append(lines[i]); i += 1
             if not ls: i += 1; continue
             txt = merge(ls)
@@ -314,7 +390,7 @@ def main():
         else:
             out.append(dict(no=no, kind=k,
                             blocks=[dict(t='raw', text=l['text']) for l in p['lines']]))
-    json.dump(dict(pages=out), open('/home/user/build/doc.json', 'w'), ensure_ascii=False)
+    json.dump(dict(pages=out), open(_p('doc.json'), 'w'), ensure_ascii=False)
     c = Counter(b['t'] for pg in out for b in pg.get('blocks', []))
     print(c)
     tabs = [b for pg in out for b in pg.get('blocks', []) if b.get('t') == 'table']

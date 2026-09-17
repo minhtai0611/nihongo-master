@@ -2,8 +2,12 @@
 import pymupdf, json, re, statistics
 from collections import defaultdict
 
+import os as _os
+BASE = _os.environ.get('NIHONGO_BUILD') or _os.path.dirname(_os.path.abspath(__file__))
+def _p(name): return _os.path.join(BASE, name)
+
 SRC = '/home/user/nihongo-master/Nihongo_Master_N5-N1.pdf'
-OUT = '/home/user/build/ir.json'
+OUT = _p('ir.json')
 
 # ---- geometry constants measured from the original -------------------------
 PAGE_W, PAGE_H = 595.28, 841.89
