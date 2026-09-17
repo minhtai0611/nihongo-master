@@ -1,0 +1,197 @@
+# -*- coding: utf-8 -*-
+"""Rebuild the reference index (R16) as a faithful multi-column grid.
+
+The First Edition prints R16 as newspaper columns: R16.1 (日本語索引) in three
+columns of *term + Vietnamese gloss + page number*, R16.2 (ベトナム語索引) in two
+columns of *Vietnamese gloss + Japanese form + page number*, with level markers
+(N5/N4/N3/N2/N1/REF) standing alone in the first column.
+
+A block extractor built for ruled tables linearises that only by accident, so
+those seven pages are re-read here from the raw text lines (ir.json) and rebuilt
+as one row per visual line, one cell per column.  Nothing is added, invented,
+re-sorted or translated: every string placed in the grid comes from the page it
+belongs to, in the order the page prints it.
+"""
+import json, re, os, collections
+
+PAGES = (317, 318, 319, 320, 321, 322, 323)
+ENTRY_MAX = 8.6            # pt; index entries are set at 7.4-8.5 pt
+HEAD_MIN, HEAD_MAX = 9.0, 11.0   # pt; the R16.1 / R16.2 headings (h4)
+WIDTH_MAX = 215.0          # pt; wider lines are prose, not index entries
+ROW_TOL = 3.0              # pt; a page number sits 1.2 pt below its term
+ANCHOR_MIN = 4             # rows needed before an x counts as a column edge
+ANCHOR_TOL = 3.0           # pt; clustering tolerance for column edges
+MIN_COL_GAP = 100.0        # pt; two columns are at least this far apart
+NUM = re.compile(r'^[\d,\s]+$')
+HEAD = re.compile(r'^R1[56]')
+
+
+def index_lines(page):
+    return [L for L in page['lines']
+            if L['size'] <= ENTRY_MAX and L['text'].strip()
+            and (L['x2'] - L['x']) <= WIDTH_MAX]
+
+
+def heading_lines(page):
+    return [L for L in page['lines']
+            if HEAD_MIN <= L['size'] <= HEAD_MAX and L['text'].strip()
+            and HEAD.match(L['text'].strip())]
+
+
+def _rows(lines, tol=ROW_TOL):
+    out, cur = [], []
+    for L in sorted(lines, key=lambda L: (round(L['y'], 1), L['x'])):
+        if cur and abs(L['y'] - cur[0]['y']) <= tol:
+            cur.append(L)
+        else:
+            if cur: out.append(cur)
+            cur = [L]
+    if cur: out.append(cur)
+    return [sorted(r, key=lambda L: L['x']) for r in out]
+
+
+def split_regions(lines, heads):
+    """Vertical regions delimited by the section headings; prose dropped."""
+    ys = sorted(L['y'] for L in heads)
+    if not ys:
+        bounds = [(0.0, 1e9)]
+    else:
+        bounds = [(0.0, ys[0])] + [(ys[i], ys[i + 1])
+                                   for i in range(len(ys) - 1)] \
+                 + [(ys[-1], 1e9)]
+    out = []
+    for a, b in bounds:
+        sub = [L for L in lines if a <= L['y'] < b]
+        if sub: out.append((a, b, sub))
+    return out
+
+
+def _cluster(vals, tol):
+    out = []
+    for v in sorted(vals):
+        if out and v - out[-1][-1] <= tol:
+            out[-1].append(v)
+        else:
+            out.append([v])
+    return out
+
+
+def anchors(sub):
+    """Left edges of the entry columns, left to right.
+
+    Columns here are aligned row by row, so the left edge of a column is the x
+    that most lines in it start at.  Page-number columns are dropped (they are
+    always numeric), and gloss sub-columns fall out of the spacing rule.
+    """
+    cnt = collections.Counter(round(L['x'], 1) for L in sub)
+    groups = _cluster(list(cnt), ANCHOR_TOL)
+    ranked = sorted(((sum(cnt[x] for x in g), g) for g in groups), reverse=True)
+    if not ranked: return []
+    floor = max(ANCHOR_MIN, 0.25 * ranked[0][0])
+    keep = []
+    for n, g in ranked:
+        if n < floor: continue
+        xs = [x for x in g]
+        lines = [L for L in sub if round(L['x'], 1) in set(xs)]
+        if not lines: continue
+        if sum(1 for L in lines if NUM.match(L['text'].strip())) >= 0.5 * len(lines):
+            continue                      # a page-number column
+        x = sum(g) / len(g)
+        if any(abs(x - k) < MIN_COL_GAP for k in keep):
+            continue                      # a gloss sub-column of a kept column
+        keep.append(x)
+    return sorted(keep)
+
+
+def columns(sub, anch):
+    """Assign every line to the column edge at or nearest to its left."""
+    cols = [[] for _ in anch]
+    for L in sub:
+        idx = 0
+        for i, e in enumerate(anch):
+            if L['x'] >= e - 3.0:
+                idx = i
+        cols[idx].append(L)
+    return cols
+
+
+def cell_lines(lines):
+    """One string per visual row, with short numeric rows folded into the
+    line above (the First Edition prints each page number beside its entry)."""
+    out = []
+    for r in _rows(lines, tol=ROW_TOL):
+        txt = ' '.join(L['text'].strip() for L in r if L['text'].strip())
+        txt = re.sub(r'\s+', ' ', txt).strip()
+        if not txt: continue
+        if re.match(r'^(N[1-5]|REF)$', txt):
+            out.append(txt)            # a level marker keeps its own row
+        elif NUM.match(txt) and out:
+            out[-1] = (out[-1] + '  ' + txt).strip()
+        else:
+            out.append(txt)
+    return out
+
+
+def page_items(page):
+    """-> list of grids; each grid is a list of columns of strings."""
+    lines = index_lines(page)
+    if not lines: return []
+    grids = []
+    for a, b, sub in split_regions(lines, heading_lines(page)):
+        if not any(NUM.match(L['text'].strip()) for L in sub):
+            continue                      # the 'how to use' note above the index
+        anch = anchors(sub)
+        if not anch: continue
+        cols = [cell_lines(c) for c in columns(sub, anch)]
+        if any(cols): grids.append(cols)
+    return grids
+
+
+def apply(doc, ir_path=None):
+    here = os.path.dirname(os.path.abspath(__file__))
+    ir = json.load(open(ir_path or os.path.join(here, 'ir.json'), encoding='utf-8'))
+    src = {p['no']: p for p in ir['pages']}
+    log = []
+    for pg in doc['pages']:
+        if pg['no'] not in PAGES: continue
+        blocks = pg.get('blocks')
+        if not isinstance(blocks, list): continue
+        grids = page_items(src[pg['no']])
+        if not grids: continue
+        keep, placed, dropped = [], False, 0
+        for b in blocks:
+            if b.get('t') == 'table':
+                if not placed:
+                    keep.append({'t': 'idx', 'grids': grids}); placed = True
+                continue
+            # stray fragments left in the block IR by the newspaper columns
+            frag = ' '.join(str(b.get(k, '') or '') for k in
+                            ('text', 'label', 'body', 'cap')).strip()
+            if frag and re.fullmatch(r'[\d,\s]+', frag):
+                dropped += 1; continue
+            keep.append(b)
+        if not placed:
+            keep.append({'t': 'idx', 'grids': grids})
+        pg['blocks'] = keep
+        log.append((pg['no'], [len(g) for g in grids],
+                    sum(len(c) for g in grids for c in g)))
+        if dropped: print('   index page %d: dropped %d stray fragment(s)' % (pg['no'], dropped))
+    return log
+
+
+def debug():
+    here = os.path.dirname(os.path.abspath(__file__))
+    ir = json.load(open(os.path.join(here, 'ir.json'), encoding='utf-8'))
+    for page in ir['pages']:
+        if page['no'] not in PAGES: continue
+        grids = page_items(page)
+        print('=== page', page['no'], [(len(g), sum(len(c) for c in g)) for g in grids])
+        for g in grids:
+            for j, c in enumerate(g):
+                print('  --- column', j + 1, '(%d lines)' % len(c))
+                for ln in c[:7]:
+                    print('      ', ln)
+
+
+if __name__ == '__main__':
+    debug()
