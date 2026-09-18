@@ -74,12 +74,13 @@ def toc_head():
     h = B.SectionHead('Mục lục ／ 目次')
     h._bookmark = dict(key='toc-head', text='Mục lục ／ 目次', level=0)
     st.append(h)
-    st.append(P('Mục lục này liệt kê sáu phần, các chương trong từng phần, và các mục '
-                'tra cứu R1 → R69. Các tiểu mục (2.1, 18.4, 26.6 …) <b>không</b> in ở '
-                'đây; chúng nằm trong bảng dấu trang (bookmark) của tệp PDF, mở bằng '
-                'biểu tượng dấu trang trong trình đọc — ở đó bấm được trực tiếp. Số '
-                'trang in ở đây là số trang thật, lấy từ chính cuốn sách này, không '
-                'phải số của bản thảo.', 'lead'))
+    st.append(P('Mục lục này liệt kê sáu phần, các chương trong từng phần, các mục '
+                'tra cứu R1 → R69, và năm mục 実際の日本語 ／ REAL JAPANESE nằm ngay sau '
+                'bản đồ năng lực của mỗi bậc. Các tiểu mục (2.1, 18.4, 26.6 …) '
+                '<b>không</b> in ở đây; chúng nằm trong bảng dấu trang (bookmark) của '
+                'tệp PDF, mở bằng biểu tượng dấu trang trong trình đọc — ở đó bấm được '
+                'trực tiếp. Số trang in ở đây là số trang thật, lấy từ chính cuốn sách '
+                'này, không phải số của bản thảo.', 'lead'))
     st.append(Spacer(1, 10))
     return st
 
@@ -130,6 +131,13 @@ def backmatter():
         'tách theo loại nguồn, ghi kèm định danh, ngày truy cập và nguồn dùng cho mục nào.',
         '<b>Năm, sửa cách dẫn nguồn.</b> Bản thứ nhất có chỗ dẫn một nghiên cứu cho một luận điểm '
         'không phải luận điểm của nó. Ấn bản này sửa cách dẫn đó và ghi rõ việc sửa ở thư mục, Nhóm 3.',
+        '<b>Sáu, thêm năm mục 実際の日本語 ／ REAL JAPANESE.</b> Bản thứ nhất có khung 「なぜ」 giải '
+        'thích vì sao một cách nói nghe tự nhiên — hay, chính xác và rời rạc: mỗi khung trả lời một '
+        'câu hỏi riêng, ở các mục tra cứu R28, R36, R44, R51. Ấn bản này giữ nguyên thiết bị đó và '
+        'dùng nó ở chỗ nó mạnh nhất: một cuộc nói chuyện thật ở mỗi ranh giới bậc, N5 → N1, với cơ '
+        'chế được mổ ngay dưới từng dòng. Hội thoại trong năm mục này do ban biên tập soạn lại, '
+        'không phải bản ghi âm và không phải trích corpus; mỗi nhận định mang mức tin cậy in ngay '
+        'tại chỗ, và mỗi mục có một khung giới hạn riêng nói rõ chỗ nào có nguồn, chỗ nào chưa.',
     ]:
         st.append(P(t_, 'body'))
     st.append(Spacer(1, 8))

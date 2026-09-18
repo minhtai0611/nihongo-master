@@ -216,3 +216,119 @@ a native speaker reviewer, or a linguist. The colophon and R68 say so.
    by baseline sections R19+R31, R43, R23, R44, R34, R45, R24, R25 and R16; the
    mapping is printed in the reference map. If a third edition wants a strict
    R1–R69 sequence, those nine sections have to be renumbered physically.
+
+---
+
+## 8. 実際の日本語 ／ REAL JAPANESE — the five interludes
+
+The brief for the Second Edition asked for two things the book did not have: a
+recurring **実際の日本語 ／ REAL JAPANESE** section, and its companion block on
+**why this sounds natural**. §8 records what was built, on what evidence, and
+where the limits are.
+
+### 8.1 What was built
+
+Five interludes, one at each level boundary, printed immediately after that
+level's Can-do map (so the last page of a level shows the level's language in
+use, not a summary):
+
+| # | Scene | Level closed | Page |
+|---|---|---|---|
+| ① | Convenience store, 20:40 | N5 | 88 |
+| ② | Restaurant — ordering and paying | N4 | 123 |
+| ③ | A request, a refusal, and ウチ/ソト on the phone | N3 | 169 |
+| ④ | A project meeting with a delay in it | N2 | 201 |
+| ⑤ | Media montage — news, interview, advertisement, fiction | N1 | 238 |
+
+Each has the same skeleton: context → dialogue panel → a line-by-line "why this
+sounds natural" block → a "what a textbook teaches / what people say / where the
+difference comes from" table → a "usable now" table → a limit box → the
+confidence levels of that interlude stated in one line.
+
+The device is not an invention of this edition. The First Edition already
+printed なぜ ／ VÌ SAO NGHE TỰ NHIÊN boxes inside the reference sections (five of
+them: pp. 106, 126, 262, 357, 377 of the baseline, i.e. R28, R36, R44, R51). The
+interludes reuse that exact house label and open the same device along a whole
+conversation rather than one question at a time. Nothing was styled to look
+like a new feature.
+
+### 8.2 Sources actually consulted for §8
+
+* **文化審議会答申「敬語の指針」 (平成19年2月2日, 文化庁, 77 pp.) — read in
+  full for this revision on 2026-09-18** (bunka.go.jp, PDF). Used for: the five
+  keigo types and the 謙譲語Ⅰ/Ⅱ distinction (第2章第1–3); お(ご)……する as a
+  謙譲語Ⅰ form and the error of using it for the other party's action
+  (第2章第1【注】); お(ご)……いたす as both 謙譲語Ⅰ and Ⅱ (第2章第3【補足イ】);
+  でございます as 丁寧語 at 丁重語 level (第2章第4); いただく carrying the
+  "receiving a favour" meaning (第2章第2【補足】); 自分側は立てない and the
+  third-party conditions (第2章第6 (1)–(3)); dialectal keigo 〜はる and the
+  Tōhoku/Kantō 文末表現 reference (第1章第2-1); the warning against gender- and
+  generation-based prescriptions (第1章第2-2); the observation that public and
+  broadcast keigo is taken as a model (第1章第2-5).
+* **文化庁「国語に関する世論調査」(平成18年2月調査)**, as cited in 敬語の指針
+  第1章第2-2: お弁当 used by 10–30 % of men in every generation against 70–80 %
+  of women, and the あげる/やる shift. Quoted in interlude ① as an illustration
+  that 美化語 is a matter of person and generation, not correctness.
+
+### 8.3 What is editorial, and what is not
+
+The dialogues are **editorial reconstructions written for this edition**. They
+are not transcripts, not recordings, and not corpus examples — this edition
+queried no corpus (§6). Consequently:
+
+* every item in a "why this sounds natural" block ends with its confidence
+  level (公式 where a document was read, 一般的な教育上の説明 for the usual
+  teaching account, 編集上の整理 where the editors are describing a pattern they
+  wrote, 要検証 where nothing could be established);
+* each interlude's limit box states, in the book, which parts have sources and
+  which do not;
+* two items were deliberately **left unresolved and tagged**, because no source
+  read for this edition settles them: 「〜のほう」 (very common in speech; no
+  official text consulted governs it) and 「〜になります」 in service Japanese
+  (widely discussed in journalism and guidebooks, but not treated in 敬語の指針).
+  Likewise 「了解です」 with a superior (varies by workplace) and the frequency
+  of any of these forms (no corpus was counted).
+
+### 8.4 The index gained a third grid (R16.3)
+
+The new terms introduced by R46–R69 and by the interludes are listed in a new
+R16.3 grid. Its right-hand numbers are **section numbers, not page numbers** —
+stated in the grid's own heading. A section number stays correct when the layout
+moves; a page number does not, and this edition has no mechanism that could
+rebuild an index of its own writing (the inherited R16.1/R16.2 grids are rebuilt
+from the First Edition's geometry, `tools/indexfix.py`).
+
+The index's inherited "how to use" note claimed the index “cannot drift from the
+content”. That was true of the First Edition's generator and is not true here,
+so it was corrected in place (corrections.json), with the measured resolution
+rate printed instead. The index now also documents the translation step.
+
+### 8.5 Verification of §8
+
+* whole-book character multiset against the committed build: **lost 29, gained
+  30,063**. The 29 are all the digit `9`, and they come from the index page
+  remap rewriting ~500 numbers; every line of 25+ characters that is absent from
+  the new build comes from the printed table of contents or from the index
+  (297 lines, all accounted for: 108 TOC + 189 index). No prose was lost.
+* printed table of contents re-checked by geometry: all five interludes and all
+  five Can-do maps carry the correct page (`実際の日本語 ①` → 88, and so on).
+* glyph coverage: every character in the new content has a face (the build
+  prints this; it caught one Chinese variant character, since fixed).
+* 407 pages, 367 bookmarks (depth 4), 2.2 MB, 0 U+FFFD, 0 control characters,
+  seven light pages (all deliberate section ends).
+* the working-tree PDF present at the start of this revision carried a broken
+  text layer (81,448 control characters; MuPDF could not parse its embedded
+  font programs). The committed build (HEAD) was sound, and this rebuild is
+  sound; the text layer is now verified as part of the QA pass. Rebuilds under
+  ReportLab 4.2.5 and 5.0.1 were compared and give identical page text,
+  identical outline and the same 407 pages, so the defect was not a toolchain
+  version issue.
+
+### 8.6 Added to the open list
+
+7. The interludes assert *what people say* from teaching descriptions and from
+   the two official documents above. A third edition should test them against
+   recorded speech (CEJC, I-JAS, BTSJ) or against native-speaker judgement
+   collected for the purpose — and should say which.
+8. 〜のほう, 〜になります and 了解です (see §8.3) need a source, or they stay
+   tagged for good.

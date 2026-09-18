@@ -26,6 +26,9 @@ NUM = re.compile(r'^[\d,\s]+$')
 HEAD = re.compile(r'^R1[56]')
 
 
+WITH_NEW_TERMS = True
+
+
 def index_lines(page):
     return [L for L in page['lines']
             if L['size'] <= ENTRY_MAX and L['text'].strip()
@@ -182,6 +185,50 @@ def page_items(page):
     return grids
 
 
+
+# ---------------------------------------------------------------------------
+# R16.3 — the terms this edition adds.
+#
+# The inherited index (R16.1/R16.2) lists First-Edition terms and cites pages,
+# which this edition can recompute (see load_map/remap_numbers above).  The
+# second edition's new block (R46-R69) and the 実際の日本語 interludes (RJ1-RJ5)
+# introduce vocabulary the First Edition never indexed.  Those entries cite the
+# *section* that explains the term, not a page: a section number stays correct
+# when the layout moves, a page number does not, and this edition has no
+# mechanism to rebuild an index of its own writing.  Stated in the head of the
+# grid so the reader knows which kind of number they are reading.
+NEW_TERMS = [
+    ('美化語', 'R28 · RJ1'), ('マニュアル敬語', 'R59 · RJ1'),
+    ('ウチ・ソト', 'R28 · RJ3'), ('方言の敬語', 'R25 · RJ3'),
+    ('役割語', 'R36 · RJ5'), ('である体', 'R61 · RJ5'),
+    ('〜とみられます', 'R33 · RJ5'), ('情報構造', 'R26 · R50'),
+    ('ゼロ代名詞', 'R26 · R50'), ('語用論', 'R51'),
+    ('ポライトネス', 'R51'), ('談話標識', 'R43'),
+    ('終助詞', 'R38 · R53'), ('縮約形', 'R49'),
+    ('ローマ字表記', 'R17 · R46'), ('高低アクセント', 'R19 · R31 · R47'),
+    ('コロケーション', 'R22'), ('類義語', 'R23'),
+    ('登録変換', 'R44'), ('国字・名乗り', 'R27'),
+    ('全角・半角', 'R30'), ('絵文字・顔文字', 'R34'),
+    ('駅アナウンス', 'R35'), ('漢越語', 'R37'),
+    ('同音異義語', 'R41'), ('略語', 'R40'),
+    ('擬声語・擬態語', 'R29'), ('ビジネス日本語', 'R59'),
+    ('公用文', 'R60'), ('学術日本語', 'R60'),
+    ('検証登録簿', 'R68'), ('情報源の階層', 'R67'),
+    ('実際の日本語 ①–⑤', 'RJ1–RJ5'),
+]
+
+NEW_TERMS_HEAD = ('R16.3 — Thuật ngữ của ấn bản thứ hai ／ 第二版で加わった術語　'
+                  '（số ở cột phải là <b>mục</b>, không phải số trang ／ 右は頁ではなく項目番号）')
+
+
+def new_terms_grids(ncol=2):
+    items = ['%s — %s' % (t, r) for t, r in NEW_TERMS]
+    rows = (len(items) + ncol - 1) // ncol
+    cols = []
+    for c in range(ncol):
+        cols.append(items[c * rows:(c + 1) * rows])
+    return cols
+
 def apply(doc, ir_path=None):
     here = os.path.dirname(os.path.abspath(__file__))
     ir = json.load(open(ir_path or os.path.join(here, 'ir.json'), encoding='utf-8'))
@@ -207,6 +254,9 @@ def apply(doc, ir_path=None):
             keep.append(b)
         if not placed:
             keep.append({'t': 'idx', 'grids': grids})
+        if pg['no'] == max(PAGES) and WITH_NEW_TERMS:
+            keep.append({'t': 'h4', 'text': NEW_TERMS_HEAD})
+            keep.append({'t': 'idx', 'grids': [new_terms_grids()]})
         pg['blocks'] = keep
         log.append((pg['no'], [len(g) for g in grids],
                     sum(len(c) for g in grids for c in g)))

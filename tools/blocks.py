@@ -217,3 +217,137 @@ class Bullets(Flowable):
         y=self._th
         for p,h in self._ps:
             y-=h; p.drawOn(self.canv,0,y)
+
+
+class Dialogue(Flowable):
+    """A spoken exchange, set as a panel.
+
+    One turn is a dict:
+        sp    — speaker, e.g. ``'店員'`` (may be empty: a stage direction)
+        ja    — the Japanese line
+        ro    — romaji, or ``''`` when the level's romaji policy drops it
+        vi    — Vietnamese gloss
+        note  — optional short editorial remark under the line
+    Turns whose ``sp`` is empty and whose ``ja`` starts with ``（`` are set as
+    stage directions in the margin rather than as speech."""
+    def __init__(self, turns, width=None, show_romaji=True):
+        Flowable.__init__(self)
+        self.turns=turns; self.width=width; self.show_romaji=show_romaji
+    def wrap(self, aw, ah):
+        self._w = self.width or aw
+        self._items=[]
+        tw = self._w - 16
+        for t in self.turns:
+            sp=(t.get('sp') or '').strip(); ja=(t.get('ja') or '').strip()
+            ro=(t.get('ro') or '').strip(); vi=(t.get('vi') or '').strip()
+            nt=(t.get('note') or '').strip()
+            stage = (not sp) and ja.startswith('（')
+            ps=[]
+            if sp:
+                ps.append(('sp', P(sp,'dlgsp','SansB')))
+            if ja:
+                ps.append(('ja', P(ja,'dlgja','Body')))
+            if ro and self.show_romaji:
+                ps.append(('ro', P(ro,'dlgro','Sans')))
+            if vi:
+                ps.append(('vi', P(vi,'dlgvi','Body')))
+            if nt:
+                ps.append(('nt', P(nt,'dlgnt','Body')))
+            h=0; laid=[]
+            for kind,p in ps:
+                hh=p.wrap(tw,1000)[1]; laid.append((kind,p,hh)); h+=hh
+            h += 1.4*(len(laid)-1)
+            self._items.append(dict(stage=stage, ps=laid, h=h))
+        self._th = sum(i['h'] for i in self._items) + 3.4*(len(self._items)-1)
+        return (self._w, self._th + 12)
+    def draw(self):
+        c=self.canv; c.saveState()
+        y = self._th + 8
+        for it in self._items:
+            gap = 10.0 if it['stage'] else 0
+            if it['stage']:
+                c.setStrokeColor(T.RULE_SOFT); c.setLineWidth(0.5)
+                c.line(6, y+it['h']/2+2, self._w, y+it['h']/2+2)
+            else:
+                c.setFillColor(T.VERMILION); c.rect(5, y-it['h']-1, 1.6, it['h']+2, stroke=0, fill=1)
+            yy=y
+            for kind,p,hh in it['ps']:
+                yy -= hh
+                x = 6 if it['stage'] else 12
+                p.drawOn(c, x, yy)
+                yy -= 1.4
+            y -= it['h'] + 3.4
+        c.restoreState()
+    def split(self, availWidth, availHeight):
+        """A long exchange continues on the next page rather than overflowing."""
+        if len(self.turns) < 2:
+            return []
+        self.wrap(availWidth, availHeight)
+        h=0.0; k=0
+        for i,it in enumerate(self._items):
+            add = it['h'] + (3.4 if i else 0.0)
+            if h + add + 6 > availHeight:
+                break
+            h += add; k += 1
+        if k <= 0 or k >= len(self.turns):
+            return []
+        return [Dialogue(self.turns[:k], self.width, self.show_romaji),
+                Dialogue(self.turns[k:], self.width, self.show_romaji)]
+
+
+class SpeechNote(Flowable):
+    """The 'why this sounds natural' block.
+
+    ``items`` is a list of ``(quote, explanation)``: the Japanese fragment that
+    is being explained, then the mechanism.  Set as an annotated margin block —
+    a hairline rule, the quoted fragment in sans bold on its own line, the
+    explanation under it — so it reads as marginalia, not as another box."""
+    def __init__(self, label, items, width=None):
+        Flowable.__init__(self)
+        self.label=label; self.items=items; self.width=width
+    def wrap(self, aw, ah):
+        self._w = self.width or aw
+        tw = self._w - 22
+        self._lp = P(self.label,'snotelab','SansB')
+        h = self._lp.wrap(tw,1000)[1] + 5.0
+        self._rows=[]
+        for q,e in self.items:
+            qp=P(q,'snoteq','SansB') if q else None
+            ep=P(e,'snoteb','Body')
+            hh=0
+            if qp: hh += qp.wrap(tw,1000)[1]+1.6
+            hh += ep.wrap(tw,1000)[1]
+            self._rows.append((qp,ep,hh)); h += hh + 7.0
+        self._th=h+3
+        return (self._w, self._th+10)
+    def draw(self):
+        c=self.canv; c.saveState()
+        c.setFillColor(T.VERMILION); c.rect(0, self._th+4-14, 16, 1.5, stroke=0, fill=1)
+        c.setStrokeColor(T.RULE_SOFT); c.setLineWidth(0.5)
+        c.line(0, 4, self._w, 4)
+        c.restoreState()
+        y=self._th+4
+        h=self._lp.wrap(self._w-22,1000)[1]; y-=h; self._lp.drawOn(c,0,y); y-=5.0
+        for qp,ep,hh in self._rows:
+            if qp:
+                c.saveState(); c.setFillColor(T.VERMILION)
+                c.rect(4, y-qp.wrap(self._w-22,1000)[1]-0.5, 1.2, qp.wrap(self._w-22,1000)[1]+1.0, stroke=0, fill=1)
+                c.restoreState()
+                qh=qp.wrap(self._w-22,1000)[1]; y-=qh; qp.drawOn(c,12,y); y-=1.6
+            eh=ep.wrap(self._w-22,1000)[1]; y-=eh; ep.drawOn(c,12,y); y-=7.0
+    def split(self, availWidth, availHeight):
+        """Same for the annotated block: keep the label with the first items."""
+        if len(self.items) < 2:
+            return []
+        self.wrap(availWidth, availHeight)
+        h = self._lp.wrap(self._w-22,1000)[1] + 5.0
+        k = 0
+        for qp,ep,hh in self._rows:
+            if h + hh + 7.0 + 10 > availHeight:
+                break
+            h += hh + 7.0; k += 1
+        if k <= 0 or k >= len(self.items):
+            return []
+        head = SpeechNote(self.label, self.items[:k], self.width)
+        tail = SpeechNote(self.label + ' (tiếp)', self.items[k:], self.width)
+        return [head, tail]

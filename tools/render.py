@@ -282,6 +282,16 @@ def cando_for(level):
     _tag_generated(F, force_l1=True)
     return F
 
+def bridge_for(level):
+    """実際の日本語 interlude that closes a level (see realjapanese.py)."""
+    import importlib, realjapanese as RJ
+    importlib.reload(RJ)
+    F=list(RJ.bridge(level))
+    if F:
+        _tag_generated(F, force_l1=True)
+        print('  + 実際の日本語 (%s): %d flowables' % (level, len(F)))
+    return F
+
 def build_story():
     st=[]; STATE['headings']=[]; STATE['keyn']=0
     global DOC
@@ -314,6 +324,10 @@ def build_story():
             if prev:
                 st.append(NextPageTemplate('body'))
                 st += cando_for(prev)
+                # 実際の日本語 / REAL JAPANESE: the interlude that closes the
+                # level — the language of the level, in use, before the reader
+                # crosses into the next one.
+                st += bridge_for(prev)
             STATE['part']=pg.get('vi') or pg.get('num','')
             STATE['chap']=''''''
             st.append(NextPageTemplate('part')); st.append(PageBreak())
@@ -503,6 +517,15 @@ def build(path, headings=None):
     doc=Book(path)
     story=build_story()
     doc.multiBuild(story)
+    # A character that no registered face carries renders as a blank and is
+    # invisible in proof-reading by eye.  Report it loudly instead: this check
+    # caught a stray character in the 実際の日本語 interludes.
+    gaps = [c for c in sorted(T.UNRESOLVED) if not c.isspace()]
+    if gaps:
+        print('  ! %d character(s) have no glyph in any registered face: %s'
+              % (len(gaps), ' '.join('%r U+%04X' % (c, ord(c)) for c in gaps)))
+    else:
+        print('  glyph coverage: every character set has a face')
     seen={}; order=[]
     for h in STATE['headings']:
         if h['key'] in seen:

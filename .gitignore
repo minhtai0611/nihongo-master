@@ -6,3 +6,6 @@ tools/book.pdf
 
 __pycache__/
 *.pyc
+
+# Third-party font binaries — fetched by tools/getfonts.py, never committed.
+tools/fonts/

@@ -1,4 +1,5 @@
 """Design system for 日本語 MASTER — Second Edition."""
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import ParagraphStyle
@@ -6,7 +7,22 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-F = '/home/user/fonts/'
+def _font_dir():
+    """Where the twelve text faces live.
+
+    ``NIHONGO_FONTS`` wins; otherwise a ``fonts/`` directory beside this file,
+    otherwise the legacy path outside the repository.  They are third-party
+    binaries and are not committed — run ``getfonts.py`` to fetch them."""
+    env = os.environ.get('NIHONGO_FONTS')
+    if env:
+        return env.rstrip('/') + '/'
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (os.path.join(here, 'fonts'), '/home/user/fonts'):
+        if os.path.isdir(cand):
+            return cand.rstrip('/') + '/'
+    return os.path.join(here, 'fonts') + '/'
+
+F = _font_dir()
 
 # ---------- palette (washi / sumi / indigo / vermilion / subdued gold) -------
 SUMI      = HexColor('#1C1C21')
@@ -136,6 +152,27 @@ def build_styles():
                   textColor=SUMI, alignment=TA_LEFT),
     tds       = S('tds', fontName='Body', fontSize=8.2, leading=11.8,
                   textColor=INK_SOFT, alignment=TA_LEFT),
+    # --- 実際の日本語 / REAL JAPANESE interludes -------------------------
+    # a spoken exchange is set as a panel: speaker in small sans vermilion,
+    # the line itself in the reading face, romaji under it while the level's
+    # policy still prints it, Vietnamese gloss last.
+    dlgsp     = S('dlgsp', fontName='SansB', fontSize=8.0, leading=11.4,
+                  textColor=VERMILION, spaceAfter=1.0),
+    dlgja     = S('dlgja', fontName='Body', fontSize=11.0, leading=18.0,
+                  textColor=SUMI, spaceAfter=1.0, leftIndent=2),
+    dlgro     = S('dlgro', fontName='Sans', fontSize=7.7, leading=11.8,
+                  textColor=GREY, spaceAfter=1.2, leftIndent=2),
+    dlgvi     = S('dlgvi', fontName='Body', fontSize=9.1, leading=14.2,
+                  textColor=INK, spaceAfter=0.6, leftIndent=2),
+    dlgnt     = S('dlgnt', fontName='Body', fontSize=8.2, leading=12.6,
+                  textColor=GREY, spaceAfter=0, leftIndent=2),
+    # the 'why this sounds natural' block, set as marginalia
+    snotelab  = S('snotelab', fontName='SansB', fontSize=8.2, leading=12.0,
+                  textColor=SUMI, spaceAfter=0),
+    snoteq    = S('snoteq', fontName='SansB', fontSize=9.3, leading=13.6,
+                  textColor=VERMILION, spaceAfter=0),
+    snoteb    = S('snoteb', fontName='Body', fontSize=9.3, leading=14.6,
+                  textColor=INK, spaceAfter=0),
     idx       = S('idx', fontName='Body', fontSize=8.0, leading=10.6,
                   textColor=INK, alignment=TA_LEFT),
     idxnum    = S('idxnum', fontName='Body', fontSize=7.6, leading=10.6,

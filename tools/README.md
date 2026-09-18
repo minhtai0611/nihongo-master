@@ -20,10 +20,54 @@ PDF into `../Nihongo_Master_N5-N1_2nd_Edition.pdf`.
 | `idxmap.py` | builds `idxmap.json`: the First-Edition → Second-Edition page correspondence (bookmark anchors + validated text matches, interpolated) |
 | `idxmap.json` | committed build data: 402 baseline pages → pages of this edition |
 | `theme.py` | design system: palette, frame metrics, font registry, glyph fallback, paragraph styles |
-| `blocks.py` | ReportLab flowables: section head, callout, verification box, example, data table, bullets |
+| `blocks.py` | ReportLab flowables: section head, callout, verification box, example, data table, bullets, **dialogue panel** and **why-this-sounds-natural block** (both split across pages) |
 | `frontmatter.py` | colophon, printed table of contents, back matter |
 | `newsections.py` | the new reference sections R46–R69, the Can-do maps, the bibliography, the numbering note |
+| `realjapanese.py` | the five 実際の日本語 ／ REAL JAPANESE interludes, one per level boundary, each a dialogue panel + a line-by-line "why this sounds natural" block |
+| `getfonts.py` | fetches the twelve text faces into `fonts/` (they are not committed) |
 | `render.py` | assembles the story, applies the pre-passes, builds the PDF and the bookmark tree |
+
+## Fonts
+
+The twelve faces the book is set in (Shippori Mincho, Zen Old Mincho, Zen Kaku
+Gothic New, Noto Serif JP, Noto Sans JP, Noto Sans Latin) are third-party
+binaries under the SIL Open Font Licence and are **not committed** — together
+they are ~60 MB and can be reconstructed in a minute:
+
+```bash
+python3 getfonts.py                # -> tools/fonts/   (61.8 MB, 12 faces)
+```
+
+It takes them from the Google Fonts repository. Eight of the twelve are shipped
+there only as variable fonts; `getfonts.py` instances them to static Regular and
+Bold with fontTools and rejects anything without a `glyf` table, because
+ReportLab cannot embed PostScript/CFF outlines (the `.otf` builds of these faces
+are unusable here). `theme.py` looks in `$NIHONGO_FONTS`, then `tools/fonts/`,
+then the legacy `/home/user/fonts/`.
+
+## The 実際の日本語 ／ REAL JAPANESE interludes
+
+`realjapanese.py` holds five interludes — one at each level boundary, printed
+immediately after that level's Can-do map. Each is a scene (convenience store,
+restaurant, a request that gets refused, a project meeting, a media montage)
+with three layers: the exchange itself as a dialogue panel, a line-by-line
+"why this sounds natural" block, and two comparison tables (what a textbook
+teaches → what people say → where the difference comes from), plus a limit box.
+
+Two rules govern the file:
+
+* **The honesty rule.** The exchanges are editorial reconstructions, not
+  transcripts, and this edition queried no corpus. Every claim carries one of
+  the book's six confidence levels printed at the point of use; each interlude
+  ends with a box stating what has a source (e.g. 敬語の指針, 国語に関する世論
+  調査), what is the editors' arrangement, and what is left 要検証.
+* **The romaji rule.** Romaji is full in ① and ②, present only on new vocabulary
+  in ③, and absent in ④ and ⑤ — the N5 → N1 progression of R17/R20, applied.
+
+The device is not new: the First Edition already had なぜ ／ VÌ SAO NGHE TỰ
+NHIÊN boxes inside the reference sections (R28, R36, R44, R51). The interludes
+reuse that exact house label and open the same device up along a whole
+conversation instead of one question at a time.
 
 ## Order of operations
 
@@ -33,10 +77,34 @@ the pipeline somewhere else):
 
 ```bash
 cd tools
+python3 getfonts.py                # once: fetch the twelve text faces
 python3 extract.py                 # baseline PDF  -> ir.json      (~3 s)
 python3 group.py                   # ir.json      -> doc.json      (~0.5 s)
 python3 -c "import render; render.build('../Nihongo_Master_N5-N1_2nd_Edition.pdf')"
 ```
+
+After a rebuild, the build prints a glyph-coverage line. It must read
+`glyph coverage: every character set has a face`: a character no registered face
+carries renders as a blank, which is invisible in proof-reading by eye. (This
+check caught a Chinese variant character that had slipped into the 実際の日本語
+interludes.) The build was verified under ReportLab 4.2.5 and 5.0.1 — both give
+407 pages, byte-identical page text and an identical outline.
+
+### Two-pass build (the index map)
+
+The index (R16) inherits the First Edition's entries, so its page numbers have
+to be translated into this edition's pagination. That correspondence is built
+from the *built* PDF, so a full rebuild is two render passes:
+
+```bash
+python3 -c "import render; render.build('/tmp/pass1.pdf')"
+python3 idxmap.py /tmp/pass1.pdf                # -> idxmap.json
+python3 -c "import render; render.build('/tmp/pass2.pdf')"   # settle the numbers
+python3 idxmap.py /tmp/pass2.pdf                # confirm the map is stable
+```
+
+`idxmap.json` is committed. Regenerate it whenever the layout moves, or the
+index will cite the previous layout's pages.
 
 ### Structural repairs done by `group.py`
 

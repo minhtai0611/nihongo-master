@@ -43,6 +43,18 @@
   [
    "Văn bản chính thức hiện hành là 「ローマ字のつづり方」令和7年（2025）内閣告示第4号, được ban hành ngày 22 tháng 12 năm 2025.",
    "Tính đến tháng 1 năm 2026, văn bản chính thức hiện hành là 「ローマ字のつづり方」令和7年（2025）内閣告示第4号, ban hành ngày 22 tháng 12 năm 2025. Trước đó, quy định cũ (昭和29年内閣告示第1号, 1954) đã có hiệu lực 71 năm."
+  ],
+  [
+   "てある",
+   "てある"
+  ],
+  [
+   "Chỉ mục này được tạo tự động từ chính nội dung sách: mỗi mục ngữ pháp và mỗi thuật ngữ được định nghĩa trong sách đều tự đăng ký vào đây cùng số trang thực tế của nó. Vì vậy chỉ mục không thể lệch khỏi nội dung. • R16.1 — Chỉ mục tiếng Nhật: sắp theo cấp độ (N5 → N1), trong mỗi cấp độ sắp theo thứ tự ký tự tiếng Nhật. Dùng khi bạn nhớ mẫu tiếng Nhật nhưng quên nó ở đâu.",
+   "Chỉ mục này kế thừa từ ấn bản thứ nhất và đã được dựng lại cho ấn bản này. Cần nói rõ điều đó, vì ấn bản thứ nhất ghi rằng chỉ mục “không thể lệch khỏi nội dung” — câu đó đúng với công cụ sinh chỉ mục của ấn bản thứ nhất, không đúng với bản này. Ở đây các mục và số trang được lấy từ chỉ mục của ấn bản thứ nhất rồi <b>dịch sang số trang của ấn bản này</b> bằng một bản đồ trang dựng từ cây dấu trang của hai ấn bản (công cụ: <i>tools/idxmap.py</i>). Độ chính xác của phép dịch đã được đo chứ không suy đoán: 121 trong 145 tham chiếu được lấy mẫu đã tra đúng trang được dẫn (83 %). Hãy dùng chỉ mục như một điểm bắt đầu, và đối chiếu mục lục khi số trang quan trọng. • R16.1 — Chỉ mục tiếng Nhật: sắp theo cấp độ (N5 → N1), trong mỗi cấp độ sắp theo thứ tự ký tự tiếng Nhật. Dùng khi bạn nhớ mẫu tiếng Nhật nhưng quên nó ở đâu."
+  ],
+  [
+   " • Số trang in đậm là nơi mẫu đó được trình bày chính thức.",
+   " • R16.3 — Thuật ngữ của ấn bản thứ hai: các thuật ngữ mới của khối R46 → R69 và của năm mục 実際の日本語. Ở lưới này, số bên phải là <b>số mục</b>, không phải số trang: số mục không lệch khi bố cục thay đổi, còn số trang thì có.  • Số trang in đậm là nơi mẫu đó được trình bày chính thức."
   ]
  ],
  "nuke": []
